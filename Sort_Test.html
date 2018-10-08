@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Lab-5</title>
+    <script src="https://d3js.org/d3.v4.min.js"></script>
+    <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+    <script type="text/javascript" src="http://code.jquery.com/jquery-latest.min.js"></script>
+    <style>
+        #chart div {
+            font: 10px sans-serif;
+            background-color: steelblue;
+            text-align: right;
+            padding: 3px;
+            margin: 1px;
+            color: white;
+        }
+    </style>
+
+</head>
+<body>
+<div>
+    <h3>Average IMDB Rating of Each Director</h3>
+</div>
+<div id='chart'></div>
+<script>
+
+    // Chart dimensions
+    margin = {top: 20, right: 20, bottom: 100, left: 70};
+    width = 700 - margin.left - margin.right;
+    height = 300 - margin.top - margin.bottom;
+
+    // Create a blank chart
+    svg = d3.select("body")
+        .append("svg")
+        .attr("width", width+margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    // Create Scales
+    x = d3.scaleBand()
+        .range([0, width])
+        .paddingInner(.3);
+
+    y = d3.scaleLinear()
+        .range([height, 0]);
+
+    z = d3.scaleSequential(d3.interpolateBlues);
+
+    // Draw infobox
+    var infobox = d3.select("body")
+        .append("div")
+        .style("position", "absolute")
+        .style("visibility", "visible")
+        .style("background", "#e3e7e8")
+        .attr("id", "infobox")
+        .html("Director: " + "<br\>" + "Movie Count: " + "<br\>" + "Avg IMDB Rating: " + "<br\>" + "Avg Production Budget: ");
+
+    // Create chart title
+    title = svg.append("text")
+        .attr("alignment-baseline","top")
+        .attr("id","text_"+"(alignment-baseline) top")
+        .text("IMDB");
+
+
+    // Import data
+    var fileName = "movies_lab5.json";
+    function sortBars(){
+
+        mapBySelectedValue = {"data_by_director":"Director", "data_by_imdb":"average_imdb", "data_by_production":"average_production", "data_by_num_movies":"movie_count"}
+        selectValue = d3.select('select').property('value');
+        var fieldName = mapBySelectedValue[selectValue];
+        console.log(fieldName);
+        sortByField(bind_by_director, fieldName);
+        console.log(bind_by_director);
+        drawBars(bind_by_director);
+
+        // Append title
+        //svg.append("text").attr("alignment-baseline","top").attr("id","text_"+"(alignment-baseline) top").text(selectValue);
+    }
+    function sortByField(data, fieldName){
+        return data.sort(function(a,b){comp = b.value[fieldName]-a.value[fieldName];
+            console.log(a["value"],fieldName);
+            console.log(comp, b.value[fieldName]);
+            // return comp
+            var a_value = a.value[fieldName];
+            var b_value = b.value[fieldName];
+            if (a_value > b_value){
+                return 1
+            }else{
+                return -1
+            }
+        })
+    }
+    // Add the bars
+    function drawBars(data) {
+
+        window.data = data;
+
+        // Scale the range of the data
+        x.domain(data.map(function(d){return d.key}));
+        y.domain([0, d3.max(data, function(d){return d.value.average_imdb})]);
+        z.domain([0, d3.max(data, function(d) { return d.value.average_imdb; })]);
+
+        // JOIN
+        bars = svg.selectAll("rect.bar")
+            .data(data, function(d){return d.key}); //changed from average to key
+
+        // EXIT
+        bars.exit()
+            .transition(t)
+            .attr("fill", "red")
+            .attr("width", 0)
+            .remove();
+        svg.call(d3.axisLeft(y)).exit().remove();
+
+        // UPDATE
+        bars
+            .transition(t) //t
+            .attr("fill", "yellow") // t
+            .attr("x", function (d) {
+                return x(d.key)
+            })
+            .attr("width", x.bandwidth())
+
+            .attr("y", function (d) {
+                return y(d.value.average_imdb)
+            })
+            .attr("height", function (d) {
+                return height - y(d.value.average_imdb)
+            })
+            .style("fill", function (d) {
+                return z(d.value.average_imdb);
+            });
+        drawXAxis();
+        drawYAxis();
+
+        // ENTER
+        bars.enter()
+            .append("rect")
+            .attr("class", "bar")
+            .attr("x", function (d) {
+                return x(d.key)
+            })
+            .attr("width", 0) // t
+            .transition(t) // t
+            .attr("fill", "green") // t
+            .attr("width", x.bandwidth())
+
+            .attr("y", function (d) {
+                return y(d.value.average_imdb)
+            })
+            .attr("height", function (d) {
+                return height - y(d.value.average_imdb)
+            })
+            .style("fill", function (d) {
+                return z(d.value.average_imdb);
+
+            });
+        drawXAxis();
+        drawYAxis();
+
+        // // ENTER + UPDATE (all new and existing elements)
+        // // Draw tooltip
+        // svg.selectAll("rect.bar")
+        //     .on("mouseover", function(d){ return infobox.html("Director: " + d.key + "<br\>" + "Movie Count: " + bind_by_director["$"+d.key]["movie_count"] + "<br\>" + "Avg IMDB Rating: " + bind_by_director["$"+d.key]["average_imdb"] + "<br\>" + "Avg Production Budget: " + "$" + bind_by_director["$"+d.key]["average_production"])})
+        //     .on("mouseout", function(d){ return infobox.html("Director: " + "<br\>" + "Movie Count: " + "<br\>" + "Avg IMDB Rating: " + "<br\>" + "Avg Production Budget: ")})
+
+
+
+    }// drawBars
+
+    // function filterGenre(selected_category){
+    //     filtered_data = [];
+    //     for (i=0; i<data.length; i++){
+    //         if (selected_category == "All Genres") {
+    //             filtered_data.push(data[i])
+    //         }
+    //         else if (data[i]["Major Genre"]==selected_category){ // UPDATE THIS DYNAMICALLY
+    //             filtered_data.push(data[i])
+    //         }
+    //     }
+    //     return filtered_data
+    // }//filterGenre
+
+    function drawXAxis() {
+        svg.append("g")
+            .attr("class", "axis")
+            .attr("transform", "translate(0, " + height + ")")
+            .call(d3.axisBottom(x).ticks(10))
+            .selectAll("text")
+            .style("text-anchor", "end")
+            .attr("dx", "-.8em")
+            .attr("dy", ".15em")
+            .attr("transform", "rotate(-65)");
+    }
+
+    function drawYAxis() {
+        // Add the Y axis
+        svg.append("g")
+            .call(d3.axisLeft(y));
+
+    }
+    // Load data
+
+    d3.json(fileName, function(error, data){
+        if (error) throw "error";
+
+        var movieData = data; // trying this
+        //var unfiltered_data = data; // trying this
+
+        // Create an array of genres to populate the dropdown menu
+        var genre_arr = ["All Genres"];
+        for (i=0; i<data.length; i++){
+            if (!(genre_arr.includes(data[i]["Major Genre"]))){
+                genre_arr.push(data[i]["Major Genre"])
+            }
+        }
+        // console.log(genre_arr);
+
+        function filterGenre(selected_category){
+            filtered_data = [];
+            // console.log("Filtered Data: ",filtered_data);
+            // console.log("Debugging data reset", data);
+            data = movieData;
+            // console.log("data length", data.length);
+            for (i=0; i<data.length; i++){
+                if (selected_category == "All Genres") {
+                    filtered_data.push(data[i])
+                }
+                else if (data[i]["Major Genre"]==selected_category){
+                    filtered_data.push(data[i])
+                }
+            }
+
+            // console.log("to filter", data_to_filter.length);
+            // console.log("unfiltered", unfiltered_data.length);
+
+            return filtered_data
+        }//filterGenre
+
+        // Append categories dropdown menu
+        $("#chart").append("<div></div><select id='select-option-menu'><option value='data_by_director'>Director Name</option><option value='data_by_imdb'>Average IMDB Rating</option><option value='data_by_production'>Average Production Budget</option><option value='data_by_num_movies'>Movie Count</option></select></div>");
+
+        // Append select category button
+        var button = d3.select("#chart").append("button").attr("id", "select-category");
+        d3.select("#select-category").text("Sort Category");
+
+        // Append genre dropdown menu
+        var list = d3.select("#chart").append("select").attr("id", "select-genre-menu");
+        list.selectAll("option")
+            .data(genre_arr)
+            .enter()
+            .append("option")
+            .attr("value", function(d) {return d;})
+            .text(function(d) {
+                return d; });
+
+        // Append select genre button
+        var button2 = d3.select("#chart").append("button").attr("id", "select-genre");
+        d3.select("#select-genre").text("Sort Genre");
+
+        // -----------------Filter data-----------------------
+        var genre_filter_category = "All Categories"; // this will update based on dropdown menu selection
+
+        // -------------------------- Bind data using nested data structure -----------------------------
+
+        // Bind data by director
+        var bind_by_director = d3.nest()
+            .key(function(d){ return d["Director"];})
+
+            .rollup(function(v) {
+                return {
+                    average_imdb: d3.mean(v, function(d){ return d["IMDB Rating"];}),
+                    average_production: d3.mean(v, function(d){ return d["Production Budget"];}),
+                    movie_count: d3.sum(v, function(d){ return d["Title"].slice(0, 1).length;}) // Circuitous, but this sums one letter from each movie, resulting in a total movie count
+                }; })
+            .entries(data);
+
+        // makes the bind_by_director variable global
+        window.bind_by_director = bind_by_director;
+
+        // console.log(bind_by_director);
+        for (director of bind_by_director){
+            director.value["Director"] = director.key
+        }
+
+        // Default transition
+        t = d3.transition()
+            .duration(2000);
+
+        // Append title
+        // svg.append("text").attr("alignment-baseline","top").attr("id","text_"+"(alignment-baseline) top").text("Average IMDB Rating of Each Director");
+
+        // Update bar chart based on category dropdown menu selection
+        d3.select("#select-category")
+            .attr("onclick", "sortBars()");
+
+        // Update bar chart based on genre dropdown menu selection
+        d3.select("#select-genre")
+            .on("click", function(){
+                genre_filter_category = d3.select('#select-genre-menu').property('value');
+                data = filterGenre(genre_filter_category);
+                console.log("data length2", data.length);
+
+                // Bind data by director
+                var bind_by_director = d3.nest()
+                    .key(function(d){ return d["Director"];})
+
+                    .rollup(function(v) {
+                        return {
+                            average_imdb: d3.mean(v, function(d){ return d["IMDB Rating"];}),
+                            average_production: d3.mean(v, function(d){ return d["Production Budget"];}),
+                            movie_count: d3.sum(v, function(d){ return d["Title"].slice(0, 1).length;})
+                        }; })
+                    .entries(data);
+
+                drawBars(bind_by_director);
+            });
+
+        // Initial draw bars (as a placeholder before user selects from dropdown menu)
+        drawBars(bind_by_director);
+
+        // Update tooltip on mouseover
+        svg.selectAll("rect.bar")
+        //.on("mouseover", function(d){ return infobox.html("Director: " + d.key + "<br\>" + "Movie Count: " + bind_by_director["$"+d.key]["movie_count"] + "<br\>" + "Avg IMDB Rating: " + bind_by_director["$"+d.key]["average_imdb"] + "<br\>" + "Avg Production Budget: " + "$" + bind_by_director["$"+d.key]["average_production"])})
+            .on("mouseover", function(d){ return infobox.html("Director: " + d.key + "<br\>" + "Movie Count: " + d.value["movie_count"] + "<br\>" + "Avg IMDB Rating: " + d.value["average_imdb"] + "<br\>" + "Avg Prduction Budget: $" + d.value["average_production"])})
+            .on("mouseout", function(d){ return infobox.html("Director: " + "<br\>" + "Movie Count: " + "<br\>" + "Avg IMDB Rating: " + "<br\>" + "Avg Production Budget: ")})
+
+
+
+
+    });
+
+</script>
+
+</body>
+</html>

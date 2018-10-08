@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Lab-5</title>
+    <script src="https://d3js.org/d3.v4.min.js"></script>
+    <!--optional color scales, you can specify your own color scale-->
+    <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+
+</head>
+<body>
+
+
+<script>
+    data1 = [
+        {"name": "A", "salary": 5},
+        {"name": "B", "salary": 2},
+        {"name": "C", "salary": 3}
+    ]
+
+    data2 = [
+        {"name": "C", "salary": 2},
+        {"name": "A", "salary": 8},
+        {"name": "B", "salary": 3},
+        {"name": "D", "salary": 1}
+    ]
+
+    data3 = [
+        {"name": "A", "salary": 3},
+        {"name": "C", "salary": 9},
+        {"name": "D", "salary": 4}
+    ]
+
+    //chart dimensions
+    w = 500
+    h = 300
+    margin = {top: 50, right: 20, bottom: 20, left: 40}
+    width = w - margin.left - margin.right
+    height = h - margin.top - margin.bottom
+
+    //create blank chart
+    svg = d3.select("body")
+        .append("svg")
+        .attr("width", w)
+        .attr("height", h)
+        .attr("id", "chart")
+        .append("g")
+        .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+
+    //create info box
+    infobox = d3.select("body")
+        .append("div")
+        .style("margin", "1em")
+        .style("background-color", "#ddd")
+        .style("padding", "1em")
+        .style("height", "1em")
+        .style("width", "5em")
+
+    //create scales
+    x = d3.scaleBand()
+        .domain(["A", "B", "C", "D"])
+        .range([0, width])
+        .paddingInner(0.1)
+
+    y = d3.scaleLinear()
+        .domain([0, 10])
+        .range([height, 0])
+
+    //default transition settings
+    t = d3.transition()
+        .duration(2000)
+
+    
+    function drawBars(data) {
+        //update x axis
+        x.domain(data.map((d) => d.name))
+        svg.select("g.x_axis")
+            .call(d3.axisBottom(x))
+
+        //JOIN
+        bars = svg.selectAll("rect.bar")
+            .data(data, (d) => d.name)
+
+        //EXIT (elements to be removed)
+        bars.exit()
+          .transition(t)
+            .attr("fill", "red")
+            .attr("width", 0)
+            .remove()
+
+        //UPDATE (elements to be updated)
+        bars
+          .transition(t)
+            .attr("fill", "yellow")
+            .attr("y", (d) => y(d.salary))
+            .attr("height", (d) => height - y(d.salary))
+            .attr("x", (d) => x(d.name))
+            .attr("width", x.bandwidth())
+
+        //ENTER (elements to be created)
+        bars.enter()
+            .append("rect")
+            .attr("class", "bar")
+            .attr("y", (d) => y(d.salary))
+            .attr("height", (d) => height - y(d.salary))
+            .attr("x", (d) => x(d.name))
+            .attr("width", 0)
+          .transition(t)
+            .attr("fill", "green")
+            .attr("width", x.bandwidth())
+
+        //ENTER + UPDATE (all new and existing elements)
+        svg.selectAll("rect.bar")
+            .on("mouseover", (d) => infobox.text(d.name + ": " + d.salary))
+            .on("mouseout", (d) => infobox.text(""))
+    }
+
+    function addScales() {
+        svg.append("g")
+            .attr("class", "x_axis")
+            .attr("transform", "translate(0," + height + ")")
+            .call(d3.axisBottom(x))
+
+        svg.append("g")
+            .attr("class", "y_axis")
+            .call(d3.axisLeft(y))
+    }
+
+    addScales()
+    drawBars(data1)
+
+</script>
+
+
+</body>
+</html>
